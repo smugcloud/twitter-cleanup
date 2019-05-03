@@ -2,8 +2,10 @@ package twitter
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/smugcloud/twitter-cleanup/util"
@@ -39,6 +41,7 @@ type APIRequest struct {
 	Next       string
 	MonthsBack int
 	Period     int
+	count      int
 }
 
 //Cleanup is the ticker which triggers a new run of the ProcessTweets
@@ -48,8 +51,9 @@ func Cleanup(client Client) {
 	for {
 		select {
 		case <-t.C:
-			// client.getBearerToken()
+			client.count = 0
 			client.getAllTweets(&client.APIRequest)
+			log.Printf("%v tweets processed.\n", client.count)
 		}
 	}
 }
@@ -72,18 +76,25 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	if options.Next != "" {
 		u = u + "&next=" + options.Next
 	}
+	log.Println("Polling twitter.")
 	req, _ := http.NewRequest("GET", u, nil)
 
 	resp, err := c.Tgo.SendRequest(req)
 	if err != nil {
 		log.Fatalf("error in querying tweets: %v\n", err)
 	}
+	if resp.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(resp.Body)
 
+		log.Printf("Full response: %v\n", resp)
+		log.Printf("Response body: %v\n", string(body))
+	}
 	r := Response{}
 	json.NewDecoder(resp.Body).Decode(&r)
 
 	// Put all of the latest results on the channel
 	for _, v := range r.Results {
+		c.count++
 		c.DeleteIDS <- v.ID
 
 	}
@@ -99,7 +110,7 @@ func (c *Client) deleteTweets() {
 		select {
 		case id := <-c.DeleteIDS:
 			log.Printf("Attempting to delete %v\n", id)
-			u := "https://api.twitter.com/1.1/statuses/destroy/" + string(id) + ".json"
+			u := "https://api.twitter.com/1.1/statuses/destroy/" + strconv.FormatUint(id, 10) + ".json"
 			req, _ := http.NewRequest("POST", u, nil)
 
 			resp, err := c.Tgo.SendRequest(req)
@@ -108,7 +119,13 @@ func (c *Client) deleteTweets() {
 			}
 			if resp.StatusCode != 200 {
 				log.Printf("Received a non-200 value: %v\n", resp.StatusCode)
+				body, _ := ioutil.ReadAll(resp.Body)
+
+				log.Printf("Full response: %v\n", resp)
+				log.Printf("Response body: %v\n", string(body))
+				continue
 			}
+			log.Printf("Deleted tweet %v\n", id)
 		}
 	}
 

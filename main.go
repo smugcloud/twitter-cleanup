@@ -16,6 +16,11 @@ var handle, from string
 var start, period int
 
 func main() {
+	flag.StringVar(&handle, "handle", "smugcloud", "Twitter username to search.")
+	flag.IntVar(&start, "start", 12, "The number of previous months to preserve on Twitter (anything before will be deleted).")
+	flag.StringVar(&from, "from", "20100101", "Starting date to look back to, in Twitter format (YYYYMMDD)")
+	flag.IntVar(&period, "period", 1, "The frequency with which to check Twitter (in months)")
+
 	flag.Parse()
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
@@ -37,21 +42,14 @@ func main() {
 		APIRequest: twitter.APIRequest{
 			Handle:     handle,
 			MonthsBack: start,
+			From:       from,
 			Period:     period,
 		},
 		DeleteIDS: make(chan uint64, 20),
 	}
 	client.ProcessTweets()
+	// twitter.Cleanup(client)
 
 	s := server.Server{}
 	s.HttpServer()
-}
-
-func init() {
-	flag.StringVar(&handle, "handle", "smugcloud", "Twitter username to search.")
-	flag.IntVar(&start, "start", 12, "The number of previous months to preserve on Twitter (anything before will be deleted).")
-	flag.StringVar(&from, "from", "20100101", "Starting date to look back to, in Twitter format (YYYYMMDD)")
-
-	flag.IntVar(&period, "period", 1, "The frequency with which to check Twitter (in months)")
-
 }
