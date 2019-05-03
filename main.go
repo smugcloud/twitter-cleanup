@@ -12,10 +12,11 @@ import (
 	"github.com/smugcloud/twitter-cleanup/twitter"
 )
 
-var handle, end string
+var handle, from string
 var start, period int
 
 func main() {
+	flag.Parse()
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
 	accessToken := os.Getenv("ACCESS_TOKEN")
@@ -38,6 +39,7 @@ func main() {
 			MonthsBack: start,
 			Period:     period,
 		},
+		DeleteIDS: make(chan uint64, 20),
 	}
 	client.ProcessTweets()
 
@@ -48,6 +50,8 @@ func main() {
 func init() {
 	flag.StringVar(&handle, "handle", "smugcloud", "Twitter username to search.")
 	flag.IntVar(&start, "start", 12, "The number of previous months to preserve on Twitter (anything before will be deleted).")
+	flag.StringVar(&from, "from", "20100101", "Starting date to look back to, in Twitter format (YYYYMMDD)")
+
 	flag.IntVar(&period, "period", 1, "The frequency with which to check Twitter (in months)")
 
 }

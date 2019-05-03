@@ -11,7 +11,7 @@ var getDateTests = []int{
 
 func TestDate(t *testing.T) {
 	time := time.Date(2019, time.October, 3, 0, 0, 0, 0, time.UTC)
-	expected := []string{"20181003", "20190703"}
+	expected := []string{"201810030000", "201907030000"}
 	for k, v := range getDateTests {
 		r := GetToDate(v, time)
 

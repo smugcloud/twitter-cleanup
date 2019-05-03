@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// GetToDate takes the amount of months to look back in time, and convert
+// to the Twitter time format
 func GetToDate(months int, now time.Time) string {
 	// Gross time manipulation
 	var smo, sd string
@@ -27,6 +29,6 @@ func GetToDate(months int, now time.Time) string {
 	} else {
 		sd = strconv.Itoa(d)
 	}
-
-	return strconv.Itoa(ad.Year()) + smo + sd
+	// Add the trailing zeros for the HHmm time format
+	return strconv.Itoa(ad.Year()) + smo + sd + "0000"
 }
