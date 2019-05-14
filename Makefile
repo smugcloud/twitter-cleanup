@@ -1,5 +1,9 @@
 .PHONY: build-linux, build-darwin
 
+all:
+	$(MAKE) build-linux
+	$(MAKE) build-darwin 
+
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -o builds/linux/twitter-cleanup
 
