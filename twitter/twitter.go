@@ -13,6 +13,11 @@ import (
 	"github.com/kurrik/twittergo"
 )
 
+// ITwitter is an interface for mocking
+type ITwitter interface {
+	deleteTweets()
+}
+
 //Auth holds the bearer (acess) token we get back from Twitter
 type Auth struct {
 	AccessToken string `json:"access_token"`
@@ -31,6 +36,8 @@ type Client struct {
 	Tgo *twittergo.Client
 	APIRequest
 	DeleteIDS chan uint64
+	SearchURL string
+	DeleteURL string
 }
 
 //APIRequest holds the values we want to send in the request with multiple calls
@@ -42,6 +49,11 @@ type APIRequest struct {
 	MonthsBack int
 	Period     int
 	count      int
+}
+
+//NewITwitter provides an Interface to use for mocking/testing
+func NewITwitter(c *Client) ITwitter {
+	return c
 }
 
 //Cleanup is the ticker which triggers a new run of the ProcessTweets
@@ -72,7 +84,7 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	//While there's a `next` value in the response, follow the next, but also grab
 	//the Tweet ID for deletion
 
-	u := `https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json?query=from:` + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + `&maxResults=10`
+	u := c.SearchURL + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + `&maxResults=10`
 	if options.Next != "" {
 		u = u + "&next=" + options.Next
 	}
@@ -110,7 +122,9 @@ func (c *Client) deleteTweets() {
 		select {
 		case id := <-c.DeleteIDS:
 			log.Printf("Attempting to delete %v\n", id)
-			u := "https://api.twitter.com/1.1/statuses/destroy/" + strconv.FormatUint(id, 10) + ".json"
+			// Manually appending the slash for now
+			u := c.DeleteURL + strconv.FormatUint(id, 10) + ".json"
+			log.Printf("url to delete %v\n", u)
 			req, _ := http.NewRequest("POST", u, nil)
 
 			resp, err := c.Tgo.SendRequest(req)

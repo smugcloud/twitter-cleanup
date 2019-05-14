@@ -15,6 +15,9 @@ import (
 var handle, from string
 var start, period int
 
+var defaultSearch = `https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json?query=from:`
+var defaultDelete = `https://api.twitter.com/1.1/statuses/destroy/`
+
 func main() {
 	flag.StringVar(&handle, "handle", "smugcloud", "Twitter username to search.")
 	flag.IntVar(&start, "start", 12, "The number of previous months to preserve on Twitter (anything before will be deleted).")
@@ -38,7 +41,9 @@ func main() {
 
 	tgoClient := twittergo.NewClient(oauthConfig, user)
 	client := twitter.Client{
-		Tgo: tgoClient,
+		Tgo:       tgoClient,
+		SearchURL: defaultSearch,
+		DeleteURL: defaultDelete,
 		APIRequest: twitter.APIRequest{
 			Handle:     handle,
 			MonthsBack: start,
@@ -48,7 +53,6 @@ func main() {
 		DeleteIDS: make(chan uint64, 20),
 	}
 	client.ProcessTweets()
-	// twitter.Cleanup(client)
 
 	s := server.Server{}
 	s.HttpServer()
