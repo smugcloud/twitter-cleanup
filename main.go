@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/kurrik/oauth1a"
@@ -24,11 +25,27 @@ func main() {
 	flag.StringVar(&from, "from", "20100101", "Starting date to look back to, in Twitter format (YYYYMMDD)")
 	flag.IntVar(&period, "period", 1, "The frequency with which to check Twitter (in months)")
 
+	// Custom Usage function to show the environment variables needed.
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n\n", os.Args[0])
+		fmt.Printf("Environment variables for Twitter authentication:\n")
+		fmt.Printf("CONSUMER_SECRET\nCONSUMER_KEY\nACCESS_TOKEN\nACCESS_TOKEN_SECRET\n\n")
+		fmt.Println("Command line flags:")
+		flag.PrintDefaults()
+
+	}
+
 	flag.Parse()
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
 	accessToken := os.Getenv("ACCESS_TOKEN")
 	tokenSecret := os.Getenv("ACCESS_TOKEN_SECRET")
+
+	if consumerKey == "" || consumerSecret == "" || accessToken == "" || tokenSecret == "" {
+		fmt.Printf("Environment variables for Twitter authentication are required.\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	oauthConfig := &oauth1a.ClientConfig{
 		ConsumerKey:    consumerKey,
