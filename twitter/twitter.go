@@ -36,7 +36,8 @@ type Client struct {
 	Tgo *twittergo.Client
 	APIRequest
 	DeleteIDS chan uint64
-	url       string
+	SearchURL string
+	DeleteURL string
 }
 
 //APIRequest holds the values we want to send in the request with multiple calls
@@ -83,7 +84,7 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	//While there's a `next` value in the response, follow the next, but also grab
 	//the Tweet ID for deletion
 
-	u := `https://` + c.url + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + `&maxResults=10`
+	u := c.SearchURL + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + `&maxResults=10`
 	if options.Next != "" {
 		u = u + "&next=" + options.Next
 	}
@@ -122,7 +123,7 @@ func (c *Client) deleteTweets() {
 		case id := <-c.DeleteIDS:
 			log.Printf("Attempting to delete %v\n", id)
 			// Manually appending the slash for now
-			u := c.url + "/" + strconv.FormatUint(id, 10) + ".json"
+			u := c.DeleteURL + strconv.FormatUint(id, 10) + ".json"
 			log.Printf("url to delete %v\n", u)
 			req, _ := http.NewRequest("POST", u, nil)
 

@@ -21,3 +21,22 @@ func TestDate(t *testing.T) {
 		}
 	}
 }
+
+func TestURLParse(t *testing.T) {
+	scenarios := []struct {
+		given    string
+		expected string
+	}{
+		{"localhost", "https://localhost/"},
+		{"http://127.0.0.1:53941", "http://127.0.0.1:53941/"},
+		{"https://api.twitter.com/", "https://api.twitter.com/"},
+	}
+
+	for _, i := range scenarios {
+		p := URLParse(i.given)
+
+		if i.expected != p.String() {
+			t.Errorf("Expected URL does not match returned: %v, %v\n", i.expected, p)
+		}
+	}
+}
