@@ -1,4 +1,4 @@
-.PHONY: build-linux, build-darwin
+.PHONY: build-linux, build-darwin, lambda
 
 all:
 	$(MAKE) build-linux
@@ -6,6 +6,10 @@ all:
 
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -o builds/linux/twitter-cleanup
+
+lambda:
+	GOOS=linux GOARCH=amd64 go build -o builds/linux/twitter-cleanup
+	zip twitter-cleanup.zip builds/linux/twitter-cleanup
 
 build-darwin:
 	GOOS=darwin GOARCH=amd64 go build -o builds/darwin/twitter-cleanup

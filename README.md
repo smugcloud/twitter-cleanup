@@ -1,7 +1,6 @@
 # Tweet Cleanup
 
-A utility to quickly delete old tweets in a one-off run, or periodically as a background daemon.
-
+A Lambda (or any serverless really) based application to delete a timeframe of tweets.  You can utilize things like Cloudwatch Events to run this periodically for a low cost solution.
 
 ## Requirements
 
@@ -12,24 +11,15 @@ In order to utilize this, you need to create an application in the Twitter devel
 ```
 Usage of twitter-cleanup:
 
-Environment variables for Twitter authentication:
+Environment variables for Twitter authentication and timefram
 CONSUMER_SECRET
 CONSUMER_KEY
 ACCESS_TOKEN
 ACCESS_TOKEN_SECRET
-
-Command line flags:
-  -from string
-    	Starting date to look back to, in Twitter format (YYYYMMDD) (default "20100101")
-  -handle string
-    	Twitter username to search. (default "smugcloud")
-  -period int
-    	The frequency with which to check Twitter (in months) (default 1)
-  -start int
-    	The number of previous months to preserve on Twitter (anything before will be deleted). (default 12)
+FROM
+HANDLE
+START
 ```
-
-Today, running this will delete the tweets in the specified timeframe, and wait to run again in 1 month (unless you modify this default value).  
 
 ## To-Do
 
