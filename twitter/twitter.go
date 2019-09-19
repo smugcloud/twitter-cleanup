@@ -75,6 +75,7 @@ func (c *Client) ProcessTweets() {
 	c.APIRequest.To = util.GetToDate(c.APIRequest.MonthsBack, time.Now())
 
 	// Watch the channel in a goroutine
+
 	go c.deleteTweets()
 	c.getAllTweets(&c.APIRequest)
 
@@ -88,7 +89,6 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	if options.Next != "" {
 		u = u + "&next=" + options.Next
 	}
-	log.Println("Polling twitter.")
 	req, _ := http.NewRequest("GET", u, nil)
 
 	resp, err := c.Tgo.SendRequest(req)
@@ -98,8 +98,8 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
 
-		log.Printf("Full response: %v\n", resp)
-		log.Printf("Response body: %v\n", string(body))
+		log.Printf("Full response on non 200: %v\n", resp)
+		log.Printf("Response body on non 200: %v\n", string(body))
 	}
 	r := Response{}
 	json.NewDecoder(resp.Body).Decode(&r)
@@ -114,33 +114,31 @@ func (c *Client) getAllTweets(options *APIRequest) {
 		c.APIRequest.Next = r.Next
 		c.getAllTweets(&c.APIRequest)
 	}
+	close(c.DeleteIDS)
 }
 
 // Function to watch the channel, and delete all the tweets that are on it.
 func (c *Client) deleteTweets() {
-	for {
-		select {
-		case id := <-c.DeleteIDS:
-			log.Printf("Attempting to delete %v\n", id)
-			// Manually appending the slash for now
-			u := c.DeleteURL + strconv.FormatUint(id, 10) + ".json"
-			log.Printf("url to delete %v\n", u)
-			req, _ := http.NewRequest("POST", u, nil)
+	var count int
+	for id := range c.DeleteIDS {
+		count++
+		// Manually appending the slash for now
+		u := c.DeleteURL + strconv.FormatUint(id, 10) + ".json"
+		req, _ := http.NewRequest("POST", u, nil)
 
-			resp, err := c.Tgo.SendRequest(req)
-			if err != nil {
-				log.Fatalf("error in delete request: %v\n", err)
-			}
-			if resp.StatusCode != 200 {
-				log.Printf("Received a non-200 value: %v\n", resp.StatusCode)
-				body, _ := ioutil.ReadAll(resp.Body)
+		resp, err := c.Tgo.SendRequest(req)
+		if err != nil {
+			log.Fatalf("error in delete request: %v\n", err)
+		}
+		if resp.StatusCode != 200 {
+			log.Printf("Received a non-200 value in delete: %v\n", resp.StatusCode)
+			body, _ := ioutil.ReadAll(resp.Body)
 
-				log.Printf("Full response: %v\n", resp)
-				log.Printf("Response body: %v\n", string(body))
-				continue
-			}
-			log.Printf("Deleted tweet %v\n", id)
+			log.Printf("Full response in delete: %v\n", resp)
+			log.Printf("Response body in delete: %v\n", string(body))
+			continue
 		}
 	}
+	log.Printf("Deleted %v total tweets.", count)
 
 }
