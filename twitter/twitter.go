@@ -6,11 +6,17 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/smugcloud/twitter-cleanup/util"
 
 	"github.com/kurrik/twittergo"
+)
+
+const (
+	defaultSearch = `https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json?query=from:`
+	defaultDelete = `https://api.twitter.com/1.1/statuses/destroy/`
 )
 
 // ITwitter is an interface for mocking
@@ -35,9 +41,10 @@ type Response struct {
 type Client struct {
 	Tgo *twittergo.Client
 	APIRequest
-	DeleteIDS chan uint64
-	SearchURL string
-	DeleteURL string
+	deleteIDS chan uint64
+	searchURL string
+	deleteURL string
+	wg        *sync.WaitGroup
 }
 
 //APIRequest holds the values we want to send in the request with multiple calls
@@ -54,6 +61,20 @@ type APIRequest struct {
 //NewITwitter provides an Interface to use for mocking/testing
 func NewITwitter(c *Client) ITwitter {
 	return c
+}
+
+// NewClient returns a new client
+func NewClient(tgo *twittergo.Client, api APIRequest) *Client {
+	wg := sync.WaitGroup{}
+	return &Client{
+		Tgo:        tgo,
+		searchURL:  defaultSearch,
+		deleteURL:  defaultDelete,
+		APIRequest: api,
+		deleteIDS:  make(chan uint64, 20),
+		wg:         &wg,
+	}
+
 }
 
 //Cleanup is the ticker which triggers a new run of the ProcessTweets
@@ -75,20 +96,59 @@ func (c *Client) ProcessTweets() {
 	c.APIRequest.To = util.GetToDate(c.APIRequest.MonthsBack, time.Now())
 
 	// Watch the channel in a goroutine
-
+	c.wg.Add(1)
 	go c.deleteTweets()
 	c.getAllTweets(&c.APIRequest)
-
+	close(c.deleteIDS)
+	c.wg.Wait()
 }
 
 func (c *Client) getAllTweets(options *APIRequest) {
 	//While there's a `next` value in the response, follow the next, but also grab
 	//the Tweet ID for deletion
 
-	u := c.SearchURL + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + `&maxResults=10`
-	if options.Next != "" {
+	u := c.searchURL + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To
+	// if options.Next != "" {
+	// 	u = u + "&next=" + options.Next
+	// }
+
+	r := c.processRequest(u)
+	c.sendOnChannel(r)
+
+	// Loop if there are more results
+	if r.Next != "" {
 		u = u + "&next=" + options.Next
+
+		for {
+			r := c.processRequest(u)
+			c.sendOnChannel(r)
+			if r.Next == "" {
+				break
+			}
+			u = c.searchURL + options.Handle + `&fromDate=` + options.From + `0000&toDate=` + options.To + "&next=" + r.Next
+
+		}
 	}
+
+	// // Put all of the latest results on the channel
+	// for _, v := range r.Results {
+	// 	c.count++
+	// 	c.deleteIDS <- v.ID
+	// }
+	// if r.Next != "" {
+	// 	//get ids and put them on the channel
+	// }
+
+}
+
+func (c *Client) sendOnChannel(results *Response) {
+	for _, v := range results.Results {
+		c.count++
+		c.deleteIDS <- v.ID
+	}
+}
+
+func (c *Client) processRequest(u string) *Response {
 	req, _ := http.NewRequest("GET", u, nil)
 
 	resp, err := c.Tgo.SendRequest(req)
@@ -103,27 +163,16 @@ func (c *Client) getAllTweets(options *APIRequest) {
 	}
 	r := Response{}
 	json.NewDecoder(resp.Body).Decode(&r)
-
-	// Put all of the latest results on the channel
-	for _, v := range r.Results {
-		c.count++
-		c.DeleteIDS <- v.ID
-
-	}
-	if r.Next != "" {
-		c.APIRequest.Next = r.Next
-		c.getAllTweets(&c.APIRequest)
-	}
-	close(c.DeleteIDS)
+	return &r
 }
 
 // Function to watch the channel, and delete all the tweets that are on it.
 func (c *Client) deleteTweets() {
 	var count int
-	for id := range c.DeleteIDS {
+	for id := range c.deleteIDS {
 		count++
 		// Manually appending the slash for now
-		u := c.DeleteURL + strconv.FormatUint(id, 10) + ".json"
+		u := c.deleteURL + strconv.FormatUint(id, 10) + ".json"
 		req, _ := http.NewRequest("POST", u, nil)
 
 		resp, err := c.Tgo.SendRequest(req)
@@ -140,5 +189,5 @@ func (c *Client) deleteTweets() {
 		}
 	}
 	log.Printf("Deleted %v total tweets.", count)
-
+	c.wg.Done()
 }
