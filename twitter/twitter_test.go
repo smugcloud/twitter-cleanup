@@ -30,7 +30,7 @@ func NewTGo() *twittergo.Client {
 
 func newTestClient() *Client {
 	return &Client{
-		DeleteIDS: make(chan uint64, 1),
+		deleteIDS: make(chan uint64, 1),
 	}
 }
 func TestDeleteTweets(t *testing.T) {
@@ -56,14 +56,14 @@ func TestDeleteTweets(t *testing.T) {
 	client := newTestClient()
 	// Fill the client values
 	client.Tgo = tgo
-	client.SearchURL = util.URLParse(ts.URL).String()
-	client.DeleteURL = util.URLParse(ts.URL).String()
+	client.searchURL = util.URLParse(ts.URL).String()
+	client.deleteURL = util.URLParse(ts.URL).String()
 
 	iTwitter := NewITwitter(client)
 
 	go iTwitter.deleteTweets()
 	//Send an ID on the channel
-	client.DeleteIDS <- id
+	client.deleteIDS <- id
 	time.Sleep(1 * time.Second)
 
 }
@@ -86,12 +86,12 @@ func TestGetTweets(t *testing.T) {
 	client := newTestClient()
 	// Fill the client values
 	client.Tgo = tgo
-	client.SearchURL = util.URLParse(ts.URL).String()
-	client.DeleteURL = util.URLParse(ts.URL).String()
+	client.searchURL = util.URLParse(ts.URL).String()
+	client.deleteURL = util.URLParse(ts.URL).String()
 	options := &APIRequest{}
 	client.getAllTweets(options)
 
-	if 1058408022936977409 != <-client.DeleteIDS {
+	if 1058408022936977409 != <-client.deleteIDS {
 		t.Error("Error in getAllTweets.")
 	}
 }

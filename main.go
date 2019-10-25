@@ -5,21 +5,15 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/kurrik/oauth1a"
-
 	"github.com/kurrik/twittergo"
-
 	"github.com/smugcloud/twitter-cleanup/twitter"
 )
 
 var handle, from string
 var start int
-
-var defaultSearch = `https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json?query=from:`
-var defaultDelete = `https://api.twitter.com/1.1/statuses/destroy/`
 
 func main() {
 	lambda.Start(DeleteTweets)
@@ -50,21 +44,16 @@ func DeleteTweets(ctx context.Context) error {
 	}
 
 	tgoClient := twittergo.NewClient(oauthConfig, user)
-	client := twitter.Client{
-		Tgo:       tgoClient,
-		SearchURL: defaultSearch,
-		DeleteURL: defaultDelete,
-		APIRequest: twitter.APIRequest{
-			Handle:     handle,
-			MonthsBack: start,
-			From:       from,
-		},
-		DeleteIDS: make(chan uint64, 20),
+	api := twitter.APIRequest{
+		Handle:     handle,
+		MonthsBack: start,
+		From:       from,
 	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	client.ProcessTweets()
-	wg.Wait()
 
+	client := twitter.NewClient(tgoClient, api)
+
+	client.ProcessTweets()
+
+	log.Print("Waitgroup released, returning no errors.")
 	return nil
 }
